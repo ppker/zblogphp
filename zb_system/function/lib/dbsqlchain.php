@@ -44,7 +44,7 @@ class DbSqlChain {
 
 		// PHP 5.2中私有方法不会触发call
 		if (in_array($name, array('Where', 'Order', 'Group', 'Union', 'Custom'))) {
-			$this->_sql[strtolower($name)][] = $arguments[0];
+			$this->_sql[strtolower($name)] = $arguments[0];
 		} else if ($name == 'Join') {
 			$this->_sql['join'][$arguments[0]] = $arguments[1];
 		}
@@ -53,37 +53,58 @@ class DbSqlChain {
 
 	}
 
-	private function _parseWhere() {
+	private function _parseField() {
+		$field = $this->_sql['field'];
+		if (!is_array($field)) return $field;
+		if (count($field) == 0) return '';
+	}
 
+	private function _parseWhere() {
+		$where = $this->_sql['where'];
+		if (!is_array($where)) return $where;
+		if (count($where) == 0) return '';
 	}
 
 	private function _parseOrder() {
-
+		$order = $this->_sql['order'];
+		if (!is_array($order)) return $order;
+		if (count($order) == 0) return '';
 	}
 
 	private function _parseGroup() {
-
+		$group = $this->_sql['group'];
+		if (!is_array($group)) return $group;
+		if (count($group) == 0) return '';
 	}
 
 	private function _parseJoin() {
-
+		$join = $this->_sql['join'];
+		if (!is_array($join)) return $join;
+		if (count($join) == 0) return '';
 	}
 
 	private function _parseUnion() {
-
+		$union = $this->_sql['union'];
+		if (!is_array($union)) return $union;
+		if (count($union) == 0) return '';
 	}
 
 	private function _parseCustom() {
-
+		$custom = $this->_sql['custom'];
+		if (!is_array($custom)) return $custom;
+		if (count($custom) == 0) return '';
 	}
 
 	private function _buildSQL() {
+		$field  = $this->_parseField();
 		$where  = $this->_parseWhere();
 		$order  = $this->_parseOrder();
 		$group  = $this->_parseGroup();
 		$join   = $this->_parseJoin();
 		$union  = $this->_parseUnion();
 		$custom = $this->_parseCustom();
+
+		$sql = $this->_sql['method'] . ' ';
 		var_dump($this->_sql);
 		return "";
 	}

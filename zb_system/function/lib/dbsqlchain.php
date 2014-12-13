@@ -26,8 +26,11 @@ class DbSqlChain {
 			'full' => array()
 		),
 		'union' => array(),
+		'custom' => array(),
 		'value' => array()
 	);
+
+	private $_option = array();
 
 	function __get($name) {
 		if ($name == 'sql') {
@@ -40,7 +43,7 @@ class DbSqlChain {
 	function __call($name, $arguments) {
 
 		// PHP 5.2中私有方法不会触发call
-		if (in_array($name, array('Where', 'Order', 'Group', 'Union'))) {
+		if (in_array($name, array('Where', 'Order', 'Group', 'Union', 'Custom'))) {
 			$this->_sql[strtolower($name)][] = $arguments[0];
 		} else if ($name == 'Join') {
 			$this->_sql['join'][$arguments[0]] = $arguments[1];
@@ -50,7 +53,37 @@ class DbSqlChain {
 
 	}
 
+	private function _parseWhere() {
+
+	}
+
+	private function _parseOrder() {
+
+	}
+
+	private function _parseGroup() {
+
+	}
+
+	private function _parseJoin() {
+
+	}
+
+	private function _parseUnion() {
+
+	}
+
+	private function _parseCustom() {
+
+	}
+
 	private function _buildSQL() {
+		$where  = $this->_parseWhere();
+		$order  = $this->_parseOrder();
+		$group  = $this->_parseGroup();
+		$join   = $this->_parseJoin();
+		$union  = $this->_parseUnion();
+		$custom = $this->_parseCustom();
 		var_dump($this->_sql);
 		return "";
 	}

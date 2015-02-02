@@ -128,19 +128,17 @@ class Member extends Base {
 			return md5($this->Password . $zbp->guid);
 		}
 		if ($name=='IsGod') {
-			if($this->$_isgod === true || $this->$_isgod === false){
-				return $this->$_isgod;
+			if($this->_isgod === true || $this->_isgod === false){
+				return $this->_isgod;
 			}else{
 				$sql = $zbp->db->sql->Select($zbp->table['Member'],'*',array(array('=','mem_Level',1)),'mem_ID ASC',1,null);
-				$am = $zbp->GetList('Member',$sql);
-				if(count($am) == 1){
-					if($am[0]->ID == $zbp->user->ID){
-						$this->$_isgod = true;
-					}else{
-						$this->$_isgod = false;
-					}
-					return $this->$_isgod;
-				};
+				$am = $zbp->GetListType('Member',$sql);
+				if($am[0]->ID == $this->ID){
+					$this->_isgod = true;
+				}else{
+					$this->_isgod = false;
+				}
+				return $this->_isgod;
 			}
 		}
 		return parent::__get($name);
@@ -157,7 +155,7 @@ class Member extends Base {
 		return md5(md5($ps). $guid);
 
 	}
-	
+
 	/**
 	 * 保存用户数据
 	 * @return bool
@@ -170,6 +168,17 @@ class Member extends Base {
 			if ($fpsignal==PLUGIN_EXITSIGNAL_RETURN) {$fpsignal=PLUGIN_EXITSIGNAL_NONE;return $fpreturn;}
 		}
 		return parent::Save();
+	}
+
+	/**
+	 * @return bool
+	 */
+	function Del(){
+		foreach ($GLOBALS['Filter_Plugin_Member_Del'] as $fpname => &$fpsignal) {
+			$fpreturn=$fpname($this);
+			if ($fpsignal==PLUGIN_EXITSIGNAL_RETURN) {$fpsignal=PLUGIN_EXITSIGNAL_NONE;return $fpreturn;}
+		}
+		return parent::Del();
 	}
 
 }

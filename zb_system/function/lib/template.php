@@ -118,11 +118,11 @@ class Template{
 		// Step 1: 替换<?php块
 		$this->replacePHP($content);
 		// Step 2: 解析PHP
-		$this->parsePHP($content);	
+		$this->parsePHP($content);
 		// Step 3: 引入主题
 		$this->parse_template($content);
 		// Step 4: 解析module
-		$this->parse_module($content);	
+		$this->parse_module($content);
 		// Step 5: 处理注释
 		$this->parse_comments($content);
 		// Step 6: 替换配置
@@ -298,7 +298,7 @@ class Template{
 	{
 		$exp = $this->replace_dot($matches[1]);
 		$code = $matches[2];
-		return "{php} foreach ($exp) {{/php} $code{php} }  {/php}";
+		return "{php} foreach ($exp) {{/php}$code{php}}  {/php}";
 	}
 
 	/**
@@ -379,15 +379,14 @@ class Template{
 	 */
 	public function Display()
 	{
-		#强制撤除所有错误监控
-		//if($GLOBALS['option']['ZC_DEBUG_MODE']==false){
-		//	ZBlogException::ClearErrorHook();
-		//}
+		global $zbp;
+		$f=$this->path .  $this->startpage . '.php';
+		if(!is_readable($f))$zbp->ShowError(86,__FILE__,__LINE__);
 		#入口处将tags里的变量提升全局!!!
 		foreach ($this->tags as $key => &$value) {
 			$$key=&$value;
 		}
-		include $this->path .  $this->startpage . '.php';
+		include $f;
 	}
 
 	/**

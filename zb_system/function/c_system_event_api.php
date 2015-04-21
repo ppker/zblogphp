@@ -7,6 +7,29 @@
  * 2015-04-21
  */
 
+
+function apiShow($idortext = null) {
+	global $zbp, $api_data;
+
+	if ((int) $idortext == 2) {
+		Http404();
+	}
+
+	if (is_numeric($idortext)) {
+		$api_data['msg'] = $zbp->lang['error'][$idortext];
+	}elseif (!is_null($idortext)) {
+		$api_data['msg'] = $idortext;
+	}else{
+		$api_data['msg'] = '';
+	}
+
+	$api_data['error'] = (is_null($idortext)) ? 0 : 1 ;
+
+	echo json_encode($api_data);
+	die();
+}
+
+
 ################################################################################################################
 /**
  * 验证登录
@@ -15,13 +38,12 @@
 function api_VerifyLogin() {
 	$header = str_replace('Basic ', '', GetVars('HTTP_AUTHORIZATION','SERVER'));
 	$login_info = explode(':', base64_decode($header));
-	echo json_encode($login_info);
 	global $zbp;$m = null;
 	if ($zbp->Verify_MD5($login_info[0], md5($login_info[1]), $m)) {
 		$zbp->user = $m;
 		return true;
 	} else {
-		$zbp->ShowError(8, __FILE__, __LINE__);die();
+		apiShow(8);die();
 	}
 }
 

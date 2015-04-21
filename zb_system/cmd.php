@@ -312,6 +312,8 @@ switch ($action) {
 }
 
 function api_switch($action){
+	$api_data = array();
+
 	api_VerifyLogin();
 
 	switch ($action) {

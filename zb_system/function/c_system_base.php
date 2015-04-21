@@ -17,6 +17,7 @@ require ZBP_PATH . 'zb_system/function/c_system_plugin.php';
 require ZBP_PATH . 'zb_system/function/c_system_debug.php';
 require ZBP_PATH . 'zb_system/function/c_system_common.php';
 require ZBP_PATH . 'zb_system/function/c_system_event.php';
+require ZBP_PATH . 'zb_system/function/c_system_event_api.php';
 
 #系统预处理
 spl_autoload_register('AutoloadClass');

@@ -50,48 +50,20 @@ function api_VerifyLogin() {
 ################################################################################################################
 /**
  * 获取文章
- * @param mixed $idorname 文章id 或 名称、别名
- * @param array $option|null
+ * @param mixed $idorname 文章id
  * @return Post
  */
-function api_GetPost($idorname, $option = null) {
-	global $zbp;
+function api_GetPost() {
+	global $zbp,$api_data;
 	$post = null;
-
-	if (!is_array($option)) {
-		$option = array();
-	}
-
-	if (!isset($option['only_article'])) {
-		$option['only_article'] = false;
-	}
-
-	if (!isset($option['only_page'])) {
-		$option['only_page'] = false;
-	}
-
-	if (is_string($idorname)) {
-		$w[] = array('array', array(array('log_Alias', $idorname), array('log_Title', $idorname)));
-		if ($option['only_article'] == true) {
-			$w[] = array('=', 'log_Type', '0');
-		} elseif ($option['only_page'] == true) {
-			$w[] = array('=', 'log_Type', '1');
-		}
-		$articles = $zbp->GetPostList('*', $w, null, 1, null);
-		if (count($articles) == 0) {
-			$post = new Post;
-		} else {
-			$post = $articles[0];
-		}
-
-	} elseif (is_integer($idorname)) {
-		$post = $zbp->GetPostByID($idorname);
-	}
+	$post = $zbp->GetPostByID(GetVars('postid','POST'));
 
 	foreach ($GLOBALS['hooks']['Filter_Plugin_GetPost_Result'] as $fpname => &$fpsignal) {
 		$fpreturn = $fpname($post);
 	}
-	return $post;
+	$api_data['data'] = $post->GetData();
+	$api_data['ret'] = 1;
+	apiShow();die();
 }
 
 /**
@@ -243,83 +215,6 @@ function api_GetList($count = 10, $cate = null, $auth = null, $date = null, $tag
 
 }
 
-################################################################################################################
-/**
- * ViewIndex,首页，搜索页，feed页的主函数
- * @api Filter_Plugin_ViewIndex_Begin
- * @return mixed
- */
-function api_ViewIndex() {
-	global $zbp, $action;
-
-	foreach ($GLOBALS['hooks']['Filter_Plugin_ViewIndex_Begin'] as $fpname => &$fpsignal) {
-		$fpreturn = $fpname();
-		if ($fpsignal == PLUGIN_EXITSIGNAL_RETURN) {
-			$fpsignal = PLUGIN_EXITSIGNAL_NONE;return $fpreturn;
-		}
-	}
-
-	switch ($action) {
-		case 'feed':
-			ViewFeed();
-			break;
-		case 'search':
-			ViewSearch();
-			break;
-		case '':
-		default:
-			if ($zbp->currenturl == $zbp->cookiespath ||
-				$zbp->currenturl == $zbp->cookiespath . 'index.php') {
-				ViewList(null, null, null, null, null);
-			} elseif (($zbp->option['ZC_STATIC_MODE'] == 'ACTIVE' || isset($_GET['rewrite'])) &&
-				(isset($_GET['id']) || isset($_GET['alias']))) {
-				ViewPost(GetVars('id', 'GET'), GetVars('alias', 'GET'));
-			} elseif (($zbp->option['ZC_STATIC_MODE'] == 'ACTIVE' || isset($_GET['rewrite'])) &&
-				(isset($_GET['page']) || isset($_GET['cate']) || isset($_GET['auth']) || isset($_GET['date']) || isset($_GET['tags']))) {
-				ViewList(GetVars('page', 'GET'), GetVars('cate', 'GET'), GetVars('auth', 'GET'), GetVars('date', 'GET'), GetVars('tags', 'GET'));
-			} else {
-				ViewAuto($zbp->currenturl);
-			}
-	}
-}
-
-/**
- * 显示RSS2Feed
- * @api Filter_Plugin_ViewFeed_Begin
- * @return mixed
- */
-function api_ViewFeed() {
-	global $zbp;
-
-	foreach ($GLOBALS['hooks']['Filter_Plugin_ViewFeed_Begin'] as $fpname => &$fpsignal) {
-		$fpreturn = $fpname();
-		if ($fpsignal == PLUGIN_EXITSIGNAL_RETURN) {
-			$fpsignal = PLUGIN_EXITSIGNAL_NONE;return $fpreturn;
-		}
-	}
-
-	if (!$zbp->CheckRights($GLOBALS['action'])) {Http404();die;}
-
-	$rss2 = new Rss2($zbp->name, $zbp->host, $zbp->subname);
-
-	$articles = $zbp->GetArticleList(
-		'*',
-		array(array('=', 'log_Status', 0)),
-		array('log_PostTime' => 'DESC'),
-		$zbp->option['ZC_RSS2_COUNT'],
-		null
-	);
-
-	foreach ($articles as $article) {
-		$rss2->addItem($article->Title, $article->Url, ($zbp->option['ZC_RSS_EXPORT_WHOLE'] == true ? $article->Content : $article->Intro), $article->PostTime);
-	}
-
-	header("Content-type:text/xml; Charset=utf-8");
-
-	echo $rss2->saveXML();
-
-}
-
 /**
  * 展示搜索结果
  * @api Filter_Plugin_ViewSearch_Begin
@@ -411,147 +306,6 @@ function api_ViewSearch() {
 	}
 
 	$zbp->template->Display();
-
-}
-
-################################################################################################################
-/**
- * 根据Rewrite_url规则显示页面
- * @api Filter_Plugin_ViewAuto_Begin
- * @api Filter_Plugin_ViewAuto_End
- * @param string $inpurl 页面url
- * @return null|string
- */
-function api_ViewAuto($inpurl) {
-	global $zbp;
-
-	foreach ($GLOBALS['hooks']['Filter_Plugin_ViewAuto_Begin'] as $fpname => &$fpsignal) {
-		$fpreturn = $fpname($inpurl);
-		if ($fpsignal == PLUGIN_EXITSIGNAL_RETURN) {
-			$fpsignal = PLUGIN_EXITSIGNAL_NONE;return $fpreturn;
-		}
-	}
-
-	$url = GetValueInArray(explode('?', $inpurl), '0');
-
-	if ($zbp->cookiespath === substr($url, 0, strlen($zbp->cookiespath))) {
-		$url = substr($url, strlen($zbp->cookiespath));
-	}
-
-	if (IS_IIS && isset($_GET['rewrite'])) {
-		//iis+httpd.ini下如果存在真实文件
-		$realurl = $zbp->path . urldecode($url);
-		if (is_readable($realurl) && is_file($realurl)) {
-			die(file_get_contents($realurl));
-		}
-		unset($realurl);
-	}
-
-	$url = urldecode($url);
-
-	if ($url == '' || $url == 'index.php' || trim($url, '/') == '') {
-		ViewList(null, null, null, null, null);
-		return null;
-	}
-
-	if ($zbp->option['ZC_STATIC_MODE'] == 'REWRITE') {
-
-		$r = UrlRule::Rewrite_url($zbp->option['ZC_INDEX_REGEX'], 'index');
-		$m = array();
-		if (preg_match($r, $url, $m) == 1) {
-			ViewList($m[1], null, null, null, null, true);
-
-			return null;
-		}
-
-		$r = UrlRule::Rewrite_url($zbp->option['ZC_DATE_REGEX'], 'date');
-		$m = array();
-		if (preg_match($r, $url, $m) == 1) {
-			ViewList($m[2], null, null, $m[1], null, true);
-
-			return null;
-		}
-
-		$r = UrlRule::Rewrite_url($zbp->option['ZC_AUTHOR_REGEX'], 'auth');
-		$m = array();
-		if (preg_match($r, $url, $m) == 1) {
-			$result = ViewList($m[2], null, $m[1], null, null, true);
-			if ($result == true) {
-				return null;
-			}
-
-		}
-
-		$r = UrlRule::Rewrite_url($zbp->option['ZC_TAGS_REGEX'], 'tags');
-		$m = array();
-		if (preg_match($r, $url, $m) == 1) {
-			$result = ViewList($m[2], null, null, null, $m[1], true);
-			if ($result == true) {
-				return null;
-			}
-
-		}
-
-		$r = UrlRule::Rewrite_url($zbp->option['ZC_CATEGORY_REGEX'], 'cate');
-		$m = array();
-		if (preg_match($r, $url, $m) == 1) {
-			$result = ViewList($m[2], $m[1], null, null, null, true);
-			if ($result == true) {
-				return null;
-			}
-
-		}
-
-		$r = UrlRule::Rewrite_url($zbp->option['ZC_ARTICLE_REGEX'], 'article');
-		$m = array();
-		if (preg_match($r, $url, $m) == 1) {
-			if (strpos($zbp->option['ZC_ARTICLE_REGEX'], '{%id%}') !== false) {
-				$result = ViewPost($m[1], null, true);
-			} else {
-				$result = ViewPost(null, $m[1], true);
-			}
-			if ($result == false) {
-				$zbp->ShowError(2, __FILE__, __LINE__);
-			}
-
-			return null;
-		}
-
-		$r = UrlRule::Rewrite_url($zbp->option['ZC_PAGE_REGEX'], 'page');
-		$m = array();
-		if (preg_match($r, $url, $m) == 1) {
-			if (strpos($zbp->option['ZC_PAGE_REGEX'], '{%id%}') !== false) {
-				$result = ViewPost($m[1], null, true);
-			} else {
-				$result = ViewPost(null, $m[1], true);
-			}
-			if ($result == false) {
-				$zbp->ShowError(2, __FILE__, __LINE__);
-			}
-
-			return null;
-		}
-
-	}
-
-	foreach ($GLOBALS['hooks']['Filter_Plugin_ViewAuto_End'] as $fpname => &$fpsignal) {
-		$fpreturn = $fpname($url);
-		if ($fpsignal == PLUGIN_EXITSIGNAL_RETURN) {
-			$fpsignal = PLUGIN_EXITSIGNAL_NONE;return $fpreturn;
-		}
-	}
-
-	if (isset($zbp->option['ZC_COMPATIBLE_ASP_URL']) && ($zbp->option['ZC_COMPATIBLE_ASP_URL'] == true)) {
-		if (isset($_GET['id']) || isset($_GET['alias'])) {
-			ViewPost(GetVars('id', 'GET'), GetVars('alias', 'GET'));
-			return null;
-		} elseif (isset($_GET['page']) || isset($_GET['cate']) || isset($_GET['auth']) || isset($_GET['date']) || isset($_GET['tags'])) {
-			ViewList(GetVars('page', 'GET'), GetVars('cate', 'GET'), GetVars('auth', 'GET'), GetVars('date', 'GET'), GetVars('tags', 'GET'));
-			return null;
-		}
-	}
-
-	$zbp->ShowError(2, __FILE__, __LINE__);
 
 }
 
